@@ -225,7 +225,11 @@ async function waitForCohortDocument(ticks = 3): Promise<void> {
 }
 
 function groupEvents(group: CriteriaGroup): CohortEvent[] {
-  return [...group.events, ...(group.nestedGroups ?? []).flatMap(groupEvents)]
+  return [...group.events.flatMap(eventWithNested), ...(group.nestedGroups ?? []).flatMap(groupEvents)]
+}
+
+function eventWithNested(event: CohortEvent): CohortEvent[] {
+  return [event, ...(event.nestedCriteria ? groupEvents(event.nestedCriteria) : [])]
 }
 
 // A proposal's concept sets arrive with client-side UUID ids, but the Atlas
@@ -239,7 +243,7 @@ function adoptProposalConceptSets(proposal: AgentProposal): void {
   switch (proposal.kind) {
     case 'addEntryEvent':
     case 'addCensoringCriterion':
-      owners.push(proposal.event)
+      owners.push(...eventWithNested(proposal.event))
       break
     case 'addInclusionRule':
       owners.push(...proposal.rule.criteriaGroups.flatMap(groupEvents))
@@ -303,8 +307,8 @@ let savedCohortId: number | null = null
 
 // Reuse a concept set the user already curated instead of rebuilding it concept
 // by concept. Circe resolves criteria against the sets embedded in the cohort
-// expression, so "reuse" means copying the saved set's concepts in — keeping its
-// name and id so the cohort still reads as that set.
+// expression, so "reuse" means copying the saved set's concepts in as a new set.
+// The repository id is not carried over; the cohort assigns its own codeset id.
 async function handleUseConceptSet(payload: {
   conceptSetId: number
   group?: 'entry' | 'inclusion' | 'exclusion'
@@ -336,7 +340,6 @@ async function handleUseConceptSet(payload: {
   const domain = String(first.domainId ?? nested.DOMAIN_ID ?? '')
   const group = payload.group ?? 'inclusion'
   const conceptSet = {
-    id: set.id,
     name: set.name,
     conceptCount: items.length,
     items,

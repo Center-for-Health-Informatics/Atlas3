@@ -664,11 +664,11 @@ describe('pythiaBridge coverage', () => {
       await apply({ kind: 'addInclusionRule', rule })
 
       expect(registered(applySpy)).toEqual([
-        { kind: 'addConceptSet', conceptSet: { id: 0, name: 'A' } },
-        { kind: 'addConceptSet', conceptSet: { id: 1, name: 'B' } },
+        { kind: 'addConceptSet', conceptSet: { id: 1, name: 'A' } },
+        { kind: 'addConceptSet', conceptSet: { id: 2, name: 'B' } },
       ])
-      expect(rule.criteriaGroups[0]!.events[0]!.conceptSet).toEqual({ id: 0, name: 'A' })
-      expect(rule.criteriaGroups[0]!.nestedGroups[0]!.events[0]!.conceptSet).toEqual({ id: 1, name: 'B' })
+      expect(rule.criteriaGroups[0]!.events[0]!.conceptSet).toEqual({ id: 1, name: 'A' })
+      expect(rule.criteriaGroups[0]!.nestedGroups[0]!.events[0]!.conceptSet).toEqual({ id: 2, name: 'B' })
       expect(applySpy).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'addInclusionRule' }))
     })
 
@@ -683,7 +683,64 @@ describe('pythiaBridge coverage', () => {
       await apply({ kind, ...body({ id: 'uuid', name: 'Set' }) })
 
       expect(registered(applySpy)).toEqual([
-        { kind: 'addConceptSet', conceptSet: { id: 0, name: 'Set' } },
+        { kind: 'addConceptSet', conceptSet: { id: 1, name: 'Set' } },
+      ])
+    })
+
+    it('registers the concept sets of an event\'s nested criteria', async () => {
+      const store = attachEditor()
+      const applySpy = recordApply(store)
+      const event = {
+        id: 'e',
+        criteriaType: 'VisitOccurrence',
+        conceptSet: { id: 'uuid-a', name: 'A' },
+        nestedCriteria: {
+          id: 'n',
+          logicType: 'ALL',
+          events: [{ id: 'e2', criteriaType: 'ConditionOccurrence', conceptSet: { id: 'uuid-b', name: 'B' } }],
+        },
+      }
+
+      await apply({ kind: 'addEntryEvent', event })
+
+      expect(registered(applySpy)).toEqual([
+        { kind: 'addConceptSet', conceptSet: { id: 1, name: 'A' } },
+        { kind: 'addConceptSet', conceptSet: { id: 2, name: 'B' } },
+      ])
+      expect(event.nestedCriteria.events[0]!.conceptSet).toEqual({ id: 2, name: 'B' })
+    })
+
+    it('registers nested criteria inside an inclusion rule', async () => {
+      const store = attachEditor()
+      const applySpy = recordApply(store)
+      const rule = {
+        id: 'r',
+        name: 'R',
+        criteriaGroups: [
+          {
+            id: 'g',
+            logicType: 'ALL',
+            events: [
+              {
+                id: 'e',
+                criteriaType: 'DrugExposure',
+                conceptSet: { id: 'uuid-a', name: 'A' },
+                nestedCriteria: {
+                  id: 'n',
+                  logicType: 'ALL',
+                  events: [{ id: 'e2', criteriaType: 'ConditionOccurrence', conceptSet: { id: 'uuid-b', name: 'B' } }],
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      await apply({ kind: 'addInclusionRule', rule })
+
+      expect(registered(applySpy)).toEqual([
+        { kind: 'addConceptSet', conceptSet: { id: 1, name: 'A' } },
+        { kind: 'addConceptSet', conceptSet: { id: 2, name: 'B' } },
       ])
     })
 
@@ -694,7 +751,7 @@ describe('pythiaBridge coverage', () => {
       await apply({ kind: 'addConceptSet', conceptSet: { id: 'uuid', name: 'Set' } })
 
       expect(applySpy.mock.calls.map(c => c[0])).toEqual([
-        { kind: 'addConceptSet', conceptSet: { id: 0, name: 'Set' } },
+        { kind: 'addConceptSet', conceptSet: { id: 1, name: 'Set' } },
       ])
     })
 
@@ -790,7 +847,7 @@ describe('pythiaBridge coverage', () => {
       expect(p.rule?.criteriaGroups[0]).toMatchObject({ id: 'use-group-42', logicType: 'ALL' })
       const event = p.rule!.criteriaGroups[0]!.events[0]!
       expect(event.criteriaType).toBe('DrugExposure')
-      expect(event.conceptSet).toEqual({ id: 42, name: 'Statins', conceptCount: 1, items: SET.items })
+      expect(event.conceptSet).toEqual({ name: 'Statins', conceptCount: 1, items: SET.items })
       expect(event).not.toHaveProperty('cardinality')
     })
 
