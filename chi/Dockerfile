@@ -1,7 +1,7 @@
 # Atlas3 for chi-tools.uc.edu: the prebuilt Atlas3 dist (chi/build.sh runs the npm
 # build on the build machine) served as static files under /atlas/.
 # No RUN steps, so the multi-arch legs need no emulation.
-FROM docker.io/library/nginx:1.30-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
+FROM docker.io/library/nginx:1.30-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3
 
 ARG VERSION=dev
 ARG ATLAS_REVISION=unknown
